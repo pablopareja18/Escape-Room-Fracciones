@@ -1,0 +1,719 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Laboratorio del Dr. Quebrado</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Nunito:wght@600;800;900&display=swap">
+<style>
+/* Layout: barra de juego fija arriba (salas + cronómetro), sala en dos columnas (escena | reto) en iPad horizontal y una sola en vertical, bandeja de tarjetas-llave abajo. Look único oscuro: laboratorio verde azulado con latón. */
+:root{
+  --bg:#0d2326; --bg2:#11302f; --panel:#163a3c; --line:#2b5b5c; --grid:rgba(190,240,225,.035);
+  --fg:#eef6f1; --muted:#a3c2bc; --brass:#f4b740; --brass-d:#b47d1b; --on-brass:#2a1900;
+  --ok:#5cd6a0; --bad:#ff7363; --warn:#ffd36b;
+  --cheese:#f7c65c; --tomato:#dc4f3a; --crust:#c98636; --empty:#1d4446;
+  --card:#c99c5c; --card-d:#9c723a; --wood:#8d5b2e; --wood-d:#5f3b1b;
+  --metal:#7c9a9b; --metal-d:#405f60; --dark:#0a1a1b; --lcd:#08201a;
+  --p1:#7be0c3; --p2:#f58fb5; --p3:#a3a9ff; --p4:#ffd166; --p5:#8fe36b;
+  --glow:rgba(244,183,64,.5); --shadow:rgba(0,0,0,.35);
+  --display:"Bungee","Arial Black",Impact,sans-serif;
+  --body:"Nunito",ui-rounded,"Segoe UI",system-ui,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{min-height:100%}
+body{
+  background-color:var(--bg); color:var(--fg); font-family:var(--body); font-size:17px; line-height:1.45;
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:44px 44px;
+  -webkit-user-select:none; user-select:none; -webkit-tap-highlight-color:transparent; touch-action:manipulation;
+}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg2)}
+button{font:inherit;color:inherit;cursor:pointer;touch-action:manipulation}
+button:focus-visible,input:focus-visible{outline:3px solid var(--brass);outline-offset:3px}
+.wrap{max-width:1120px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1,h2,h3{text-wrap:balance;margin:0}
+p{margin:0}
+.eyebrow{font-size:13px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:var(--brass)}
+.small{font-size:14px;color:var(--muted)}
+
+/* Botones */
+.btn{border:0;border-radius:14px;padding:14px 24px;font-weight:900;font-size:18px;background:var(--brass);color:var(--on-brass);box-shadow:0 5px 0 var(--brass-d);transition:transform .08s,box-shadow .08s;min-height:54px}
+.btn:active{transform:translateY(4px);box-shadow:0 1px 0 var(--brass-d)}
+.btn.big{font-size:21px;padding:16px 30px}
+.btn.ghost{background:transparent;color:var(--fg);border:2px solid var(--line);box-shadow:none}
+.btn.ghost small{color:var(--brass);font-weight:800}
+.btn:disabled{opacity:.45}
+
+/* Fracciones */
+.fr{display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;line-height:1.08;margin:0 .12em;font-weight:900;font-variant-numeric:tabular-nums}
+.fr>span{padding:0 .18em}
+.fr>span:first-child{border-bottom:.09em solid currentColor}
+.fr.big{font-size:44px}
+
+/* HUD */
+.hud{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg2);border-bottom:2px solid var(--line)}
+.hud .wrap{display:flex;align-items:center;gap:12px;padding-block:10px;flex-wrap:wrap}
+.hbtn{border:2px solid var(--line);background:transparent;border-radius:12px;padding:8px 14px;font-weight:800;font-size:15px;min-height:44px}
+.strip{display:flex;gap:6px;flex:1;justify-content:center;flex-wrap:wrap}
+.st{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;font-family:var(--display);font-size:15px;border:2px solid var(--line);color:var(--muted)}
+.st.done{background:var(--brass);border-color:var(--brass);color:var(--on-brass)}
+.st.cur{border-color:var(--brass);color:var(--brass);animation:pulse 1.6s infinite}
+.timer{font-family:var(--display);font-size:26px;color:var(--brass);font-variant-numeric:tabular-nums;min-width:92px;text-align:right}
+.timer.pen{color:var(--bad)}
+
+/* Bandeja de tarjetas */
+.tray{position:sticky;bottom:0;z-index:4;background:var(--bg2);border-top:2px solid var(--line)}
+.tray .wrap{display:flex;align-items:center;gap:14px;padding-block:10px;flex-wrap:wrap;justify-content:center}
+.tray-label{font-weight:900;font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.slots{display:flex;gap:8px}
+.mini{width:52px;height:66px;border-radius:9px;border:2px dashed var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--line);font-family:var(--display)}
+.mini.got{border:0;background:var(--fg);color:var(--bg);box-shadow:0 3px 0 var(--shadow)}
+.mini .cg{font-size:22px;line-height:1}
+.mini .cf{font-size:12px;color:var(--brass-d);font-family:var(--body)}
+.mini.new{animation:pop .6s}
+
+/* Inicio */
+.start{display:grid;gap:28px;padding-block:36px 48px;align-items:start}
+@media(min-width:880px){.start{grid-template-columns:1.15fr .85fr;padding-block:56px}}
+.hero{display:flex;flex-direction:column;gap:18px}
+.hero h1{font-family:var(--display);font-weight:400;font-size:clamp(34px,6vw,62px);line-height:1.02;color:var(--fg)}
+.hero h1 span{color:var(--brass);display:block}
+.lead{font-size:19px;color:var(--muted);max-width:60ch}
+.rules{display:flex;flex-direction:column;gap:10px;padding:0;margin:0;list-style:none}
+.rules li{display:flex;gap:12px;align-items:center;font-size:17px}
+.rules .tag{font-family:var(--display);font-size:14px;min-width:68px;text-align:center;padding:6px 8px;border-radius:8px;background:var(--panel);color:var(--brass)}
+.start-panel{background:var(--panel);border-radius:22px;padding:24px;display:flex;flex-direction:column;gap:14px;box-shadow:0 10px 30px var(--shadow)}
+.start-panel label{font-weight:900}
+.start-panel input{font:800 20px var(--body);padding:14px 16px;border-radius:12px;border:2px solid var(--line);background:var(--bg);color:var(--fg);-webkit-user-select:text;user-select:text;min-width:0}
+.resume{background:var(--bg);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px;border:2px solid var(--brass)}
+.err{color:var(--warn);font-weight:800;min-height:1.4em}
+.rank{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px;counter-reset:r}
+.rank li{display:grid;grid-template-columns:28px 1fr auto;gap:10px;align-items:center;padding:8px 12px;border-radius:10px;background:var(--bg);counter-increment:r}
+.rank li::before{content:counter(r);font-family:var(--display);color:var(--brass)}
+.rank .rn{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:800}
+.rank .rt{font-family:var(--display);font-variant-numeric:tabular-nums}
+
+/* Sala */
+.room{display:grid;gap:18px;padding-block:20px}
+@media(min-width:900px){.room{grid-template-columns:320px minmax(0,1fr);align-items:start}}
+.scene{background:var(--panel);border-radius:22px;padding:20px;display:flex;flex-direction:column;gap:14px}
+.scene-top{display:flex;gap:14px;align-items:center}
+.ctbox{width:120px;flex:none}
+.scene h2{font-family:var(--display);font-weight:400;font-size:24px;line-height:1.1}
+.story{color:var(--muted)}
+.progress{display:flex;align-items:center;gap:12px;font-weight:800}
+.bulbs{display:flex;gap:8px}
+.bulb{width:22px;height:22px;border-radius:50%;background:var(--empty);border:2px solid var(--line);transition:background .3s,box-shadow .3s}
+.bulb.on{background:var(--ok);border-color:var(--ok);box-shadow:0 0 14px var(--ok)}
+.chal{background:var(--bg2);border:2px solid var(--line);border-radius:22px;padding:22px 18px;display:flex;flex-direction:column;gap:16px;align-items:center;min-width:0}
+.chal.shake{animation:shake .45s}
+.prompt{font-size:23px;font-weight:900;text-align:center;line-height:1.35;max-width:36ch}
+.prompt b{color:var(--brass)}
+.sub{color:var(--muted);text-align:center;font-size:16px}
+.widget{width:100%;display:flex;flex-direction:column;align-items:center;gap:16px}
+.fb{min-height:1.5em;font-weight:900;font-size:19px;text-align:center}
+.fb.ok{color:var(--ok)} .fb.bad{color:var(--bad)} .fb.warn{color:var(--warn)}
+.hintbox{border:2px dashed var(--brass);border-radius:14px;padding:12px 16px;color:var(--fg);max-width:52ch;font-size:17px}
+.hintbox::before{content:"Pista: ";font-weight:900;color:var(--brass)}
+.actions{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+
+/* Pizza */
+.pizza{width:min(300px,78vw);height:auto;display:block}
+.plate{fill:var(--line)}
+.slice path{fill:var(--empty);stroke:var(--bg2);stroke-width:3;transition:fill .15s}
+.slice.on path{fill:var(--cheese);stroke:var(--crust)}
+.slice .pep{fill:var(--tomato);opacity:0;transition:opacity .15s}
+.slice.on .pep{opacity:1}
+.pizza.tap .slice{cursor:pointer}
+.count{font-weight:800;color:var(--muted)}
+.count b{color:var(--fg);font-size:20px}
+.opts{display:grid;grid-template-columns:repeat(2,minmax(110px,1fr));gap:12px;width:min(360px,100%)}
+.opt{border:2px solid var(--line);background:var(--panel);border-radius:16px;padding:12px;font-size:30px;min-height:96px;box-shadow:0 4px 0 var(--shadow)}
+.opt:active{transform:translateY(3px);box-shadow:none}
+
+/* Candado de ruedas */
+.lockface{background:linear-gradient(170deg,var(--brass),var(--brass-d));color:var(--on-brass);border-radius:26px;padding:18px 22px;display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap;box-shadow:0 8px 0 var(--wood-d),0 14px 30px var(--shadow)}
+.eq{font-family:var(--display);font-size:38px}
+.eq-right{display:flex;flex-direction:column;align-items:center;gap:6px}
+.eq-right .row{display:flex;gap:6px;justify-content:center;min-height:56px;align-items:center}
+.eq-right .fixed{font-size:44px;font-weight:900;font-variant-numeric:tabular-nums}
+.eq-right .bar{width:100%;min-width:110px;height:6px;border-radius:3px;background:var(--on-brass)}
+.drum{display:flex;flex-direction:column;align-items:center;gap:4px}
+.dbtn{width:54px;height:36px;border-radius:10px;border:0;background:var(--wood-d);color:var(--cheese);font-size:16px}
+.dbtn:active{background:var(--dark)}
+.win{width:54px;height:92px;border-radius:12px;background:var(--dark);color:var(--fg);display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:var(--display);overflow:hidden;touch-action:none;box-shadow:inset 0 10px 12px rgba(0,0,0,.6),inset 0 -10px 12px rgba(0,0,0,.6)}
+.win .c{font-size:36px;line-height:1.05}
+.win .p,.win .n{font-size:18px;opacity:.3;line-height:1.1}
+.win.roll .c{animation:roll .18s}
+
+/* Pociones */
+.cabinet{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;min-height:150px;padding:14px;border-radius:18px;background:var(--wood-d);width:min(560px,100%)}
+.potion{border:0;background:transparent;display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px;width:76px}
+.potion svg{width:56px;height:84px}
+.potion.gone{visibility:hidden}
+.glass{fill:rgba(220,255,245,.14);stroke:rgba(220,255,245,.55);stroke-width:2}
+.liq{fill:var(--liq)}
+.cork{fill:var(--card)}
+.shine{fill:rgba(255,255,255,.4)}
+.plabel{background:var(--fg);color:var(--bg);border-radius:8px;padding:2px 6px;font-size:20px}
+.shelfwrap{display:flex;align-items:flex-end;gap:8px;width:100%;justify-content:center}
+.shelfwrap .end{font-weight:900;font-size:13px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);padding-bottom:16px}
+.shelf{display:flex;align-items:flex-end;gap:4px;border-bottom:10px solid var(--wood);padding:0 6px;border-radius:0 0 4px 4px}
+.slot{width:clamp(62px,15vw,84px);height:138px;border:2px dashed var(--line);border-bottom:0;border-radius:12px 12px 0 0;display:flex;align-items:flex-end;justify-content:center}
+.slot .potion{width:100%}
+.lt{font-family:var(--display);font-size:22px;color:var(--brass);padding-bottom:50px}
+
+/* Teclado */
+.exprrow{display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap}
+.expr{font-size:38px;display:flex;align-items:center;gap:6px}
+.op{font-family:var(--display);font-size:30px;color:var(--brass)}
+.lcd{background:var(--lcd);border:4px solid var(--metal-d);border-radius:14px;padding:10px 18px;display:flex;flex-direction:column;align-items:center;gap:4px;box-shadow:inset 0 0 18px rgba(0,0,0,.6)}
+.lcdbar{width:100%;height:4px;background:var(--ok);border-radius:2px}
+.fld{background:transparent;border:2px dashed transparent;border-radius:8px;min-width:96px;min-height:52px;font-family:var(--display);font-size:36px;color:var(--ok);font-variant-numeric:tabular-nums;line-height:1}
+.fld.focus{border-color:var(--ok);background:rgba(92,214,160,.08)}
+.lcd.single .fld{min-width:150px;font-size:42px}
+.keypad{display:grid;grid-template-columns:repeat(3,78px);gap:10px;padding:16px;border-radius:20px;background:var(--metal-d)}
+.key{height:62px;border-radius:14px;border:0;background:var(--metal);color:var(--dark);font-family:var(--display);font-size:26px;box-shadow:0 4px 0 var(--dark)}
+.key:active{transform:translateY(3px);box-shadow:0 1px 0 var(--dark)}
+.key.alt{background:var(--panel);color:var(--brass)}
+.story-q{font-size:21px;font-weight:800;text-align:center;max-width:40ch}
+
+/* Tarjetas finales */
+.deck{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;min-height:126px}
+.card{width:86px;height:118px;border-radius:14px;border:0;background:var(--fg);color:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;box-shadow:0 5px 0 var(--shadow)}
+.card .cg{font-family:var(--display);font-size:42px;line-height:1}
+.card .cf{color:var(--brass-d);font-size:20px}
+.card.gone{visibility:hidden}
+.panel5{display:flex;gap:8px;padding:14px;border-radius:18px;background:var(--metal-d);flex-wrap:wrap;justify-content:center}
+.pslot{width:90px;height:122px;border-radius:14px;background:var(--dark);display:grid;place-items:center;font-family:var(--display);color:var(--line);font-size:20px}
+
+/* Contenedores (cajas, candados...) */
+.ct{width:100%;height:auto;display:block;overflow:visible}
+.ct .lid{transform-box:fill-box;transition:transform .8s cubic-bezier(.34,1.56,.64,1)}
+.ct .k-hide{transition:opacity .3s}
+.ct.open .k-hide{opacity:0}
+.ct.shake{animation:shake .5s}
+.ct-pizza .lid{transform-origin:100% 100%}
+.ct-pizza.open .lid{transform:translate(0,-26px) rotate(-14deg)}
+.ct-lock .lid{transform-origin:0 100%}
+.ct-lock.open .lid{transform:translateY(-16px) rotate(-24deg)}
+.ct-cab .lid-l{transform-origin:0 50%}
+.ct-cab .lid-r{transform-origin:100% 50%}
+.ct-cab.open .lid-l,.ct-cab.open .lid-r{transform:scaleX(.12)}
+.ct-safe .lid,.ct-door .lid{transform-origin:0 50%}
+.ct-safe.open .lid{transform:scaleX(.14)}
+.ct-door.open .lid{transform:scaleX(.1)}
+.ct-chest .lid{transform-origin:0 100%}
+.ct-chest.open .lid{transform:translate(0,-18px) rotate(-16deg)}
+.k-card{fill:var(--card)} .k-cardd{fill:var(--card-d)} .k-cheese{fill:var(--cheese)}
+.k-txt{fill:var(--tomato);font-family:var(--display);font-size:15px;text-anchor:middle}
+.k-txt2{fill:var(--fg);font-family:var(--display);font-size:12px;text-anchor:middle}
+.k-brass{fill:var(--brass)} .k-brassd{fill:var(--brass-d)} .k-dark{fill:var(--dark)}
+.k-wood{fill:var(--wood)} .k-woodd{fill:var(--wood-d)} .k-metal{fill:var(--metal)} .k-metald{fill:var(--metal-d)}
+.k-shackle{fill:none;stroke:var(--metal);stroke-width:12;stroke-linecap:round}
+.k-light{fill:var(--brass)}
+.k-p1{fill:var(--p1)} .k-p2{fill:var(--p2)} .k-p3{fill:var(--p3)} .k-p4{fill:var(--p4)}
+
+/* Overlay */
+.overlay{position:fixed;inset:0;z-index:20;background:rgba(5,16,17,.86);display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:calc(24px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) calc(24px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.dialog{background:var(--panel);border-radius:26px;padding:28px 24px;max-width:560px;width:100%;display:flex;flex-direction:column;align-items:center;gap:16px;text-align:center;box-shadow:0 20px 60px var(--shadow);margin:auto}
+.dialog h2{font-family:var(--display);font-weight:400;font-size:30px;line-height:1.1}
+.dialog p{color:var(--muted);max-width:46ch}
+.ctbig{position:relative;width:240px}
+.ctbig .glow{position:absolute;inset:-30%;background:radial-gradient(circle,var(--glow),transparent 62%);opacity:0;transition:opacity .6s}
+.ctbig.opened .glow{opacity:1}
+.ctbig .ct{position:relative}
+.loot{animation:rise .7s cubic-bezier(.34,1.56,.64,1) both;animation-delay:1.3s}
+.wintitle{font-size:56px!important;color:var(--brass)}
+.cert{background:var(--fg);color:var(--bg);border-radius:18px;padding:20px;width:100%;display:flex;flex-direction:column;gap:8px;align-items:center}
+.cert .cl{font-weight:900;font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--brass-d)}
+.cert .cname{font-family:var(--display);font-size:28px;line-height:1.1;word-break:break-word}
+.cert .ctime{font-family:var(--display);font-size:54px;line-height:1;font-variant-numeric:tabular-nums}
+.cert dl{display:grid;grid-template-columns:1fr auto;gap:4px 16px;margin:6px 0 0;width:100%;max-width:320px;text-align:left;font-weight:800}
+.cert dd{margin:0;text-align:right;font-variant-numeric:tabular-nums}
+.cert .small{color:var(--metal-d)}
+
+.toast{position:fixed;left:50%;top:calc(80px + env(safe-area-inset-top,0px));transform:translate(-50%,-20px);background:var(--bad);color:var(--dark);font-family:var(--display);font-size:24px;padding:8px 20px;border-radius:14px;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:30}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+#confetti{position:fixed;inset:0;pointer-events:none;z-index:25;width:100%;height:100%}
+
+@keyframes pulse{50%{box-shadow:0 0 0 6px rgba(244,183,64,.18)}}
+@keyframes shake{20%{transform:translateX(-9px) rotate(-1deg)}40%{transform:translateX(8px) rotate(1deg)}60%{transform:translateX(-6px)}80%{transform:translateX(4px)}}
+@keyframes pop{0%{transform:scale(.4)}60%{transform:scale(1.15)}100%{transform:scale(1)}}
+@keyframes rise{0%{opacity:0;transform:translateY(40px) scale(.5)}100%{opacity:1;transform:none}}
+@keyframes roll{0%{transform:translateY(40%);opacity:.3}100%{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <header class="hud" id="hud" hidden>
+    <div class="wrap">
+      <button class="hbtn" id="btnHome">Inicio</button>
+      <div class="strip" id="strip" aria-label="Salas"></div>
+      <button class="hbtn" id="btnSound">Sonido: sí</button>
+      <div class="timer" id="timer" aria-label="Tiempo">00:00</div>
+    </div>
+  </header>
+  <main id="scr"></main>
+  <footer class="tray" id="tray" hidden>
+    <div class="wrap"><span class="tray-label">Tarjetas-llave</span><div class="slots" id="slots"></div></div>
+  </footer>
+</div>
+<div class="toast" id="toast" aria-live="assertive"></div>
+<div class="overlay" id="overlay" role="dialog" aria-modal="true" hidden></div>
+<canvas id="confetti" hidden></canvas>
+
+<script>
+/* ---------- utilidades ---------- */
+const $=(s,el=document)=>el.querySelector(s);
+const $$=(s,el=document)=>[...el.querySelectorAll(s)];
+const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+const range=(a,b)=>Array.from({length:b-a+1},(_,i)=>a+i);
+const gcd=(a,b)=>b?gcd(b,a%b):Math.abs(a);
+const lcm=(a,b)=>a/gcd(a,b)*b;
+const simp=(n,d)=>{const g=gcd(n,d);return[n/g,d/g]};
+const spf=n=>{for(let p=2;p<=n;p++)if(n%p===0)return p;return n};
+const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+const fr=(n,d,c='')=>`<span class="fr ${c}"><span>${n}</span><span>${d}</span></span>`;
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt=ms=>{const s=Math.max(0,Math.floor(ms/1000));return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')};
+const STORE={get(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
+const SAVE='quebrado-partida-v1',RANK='quebrado-ranking-v1',SND='quebrado-sonido';
+const scr=$('#scr');
+
+/* ---------- sonido ---------- */
+let AC=null,soundOn=STORE.get(SND)??true;
+function tone(f,dur=.12,type='sine',vol=.14,delay=0){
+  if(!soundOn)return;
+  try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume();
+    const t=AC.currentTime+delay,o=AC.createOscillator(),g=AC.createGain();
+    o.type=type;o.frequency.setValueAtTime(f,t);g.gain.setValueAtTime(.0001,t);
+    g.gain.exponentialRampToValueAtTime(vol,t+.01);g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+    o.connect(g).connect(AC.destination);o.start(t);o.stop(t+dur+.03)}catch(e){}
+}
+const sfx={
+  tap:()=>tone(540,.05,'triangle',.08),click:()=>tone(320,.035,'square',.04),
+  ok:()=>{tone(660,.12);tone(880,.2,'sine',.14,.1)},
+  bad:()=>tone(150,.28,'sawtooth',.1),
+  unlock:()=>[523,659,784,1047].forEach((f,i)=>tone(f,.22,'triangle',.14,i*.09)),
+  win:()=>[523,659,784,1047,784,1047,1319].forEach((f,i)=>tone(f,.25,'triangle',.14,i*.12))
+};
+
+/* ---------- estado ---------- */
+let S=null,cur=null,timerId=null;
+function elapsed(){return S.base+(S.t0?Date.now()-S.t0:0)+S.penalty*1000}
+function played(){return S.base+(S.t0?Date.now()-S.t0:0)}
+function save(){if(!S||S.finished)return;const now=Date.now();if(S.t0){S.base+=now-S.t0;S.t0=now}STORE.set(SAVE,{...S,t0:null})}
+function startTimer(){stopTimer();timerId=setInterval(()=>{$('#timer').textContent=fmt(elapsed())},250);$('#timer').textContent=fmt(elapsed())}
+function stopTimer(){if(timerId)clearInterval(timerId);timerId=null}
+document.addEventListener('visibilitychange',()=>{if(document.hidden)save()});
+function wakeLock(){try{navigator.wakeLock&&navigator.wakeLock.request('screen').catch(()=>{})}catch(e){}}
+
+/* ---------- contenedores ---------- */
+const CT={
+  pizza:()=>`<svg class="ct ct-pizza" viewBox="0 0 200 150" aria-hidden="true"><rect class="k-card" x="22" y="78" width="156" height="46" rx="6"/><rect class="k-cardd" x="22" y="112" width="156" height="12" rx="4"/><g class="lid"><rect class="k-cheese" x="22" y="58" width="156" height="24" rx="6"/><text class="k-txt" x="100" y="76">PIZZA</text></g><rect class="k-brass k-hide" x="90" y="76" width="20" height="16" rx="3"/></svg>`,
+  lock:()=>`<svg class="ct ct-lock" viewBox="0 0 200 150" aria-hidden="true"><g class="lid"><path class="k-shackle" d="M72 80V52a28 28 0 0 1 56 0v28"/></g><rect class="k-brass" x="52" y="72" width="96" height="68" rx="12"/><rect class="k-brassd" x="52" y="126" width="96" height="14" rx="6"/><circle class="k-dark" cx="100" cy="97" r="9"/><rect class="k-dark" x="96" y="99" width="8" height="18" rx="3"/></svg>`,
+  potion:()=>`<svg class="ct ct-cab" viewBox="0 0 200 150" aria-hidden="true"><rect class="k-woodd" x="40" y="12" width="120" height="132" rx="6"/><rect class="k-wood" x="44" y="64" width="112" height="5"/><rect class="k-wood" x="44" y="106" width="112" height="5"/><circle class="k-p1" cx="66" cy="52" r="10"/><circle class="k-p2" cx="98" cy="52" r="10"/><circle class="k-p3" cx="132" cy="52" r="10"/><circle class="k-p4" cx="80" cy="94" r="10"/><circle class="k-p1" cx="118" cy="94" r="10"/><rect class="k-wood lid lid-l" x="44" y="16" width="56" height="124" rx="3"/><rect class="k-wood lid lid-r" x="100" y="16" width="56" height="124" rx="3"/><circle class="k-brass k-hide" cx="93" cy="78" r="4"/><circle class="k-brass k-hide" cx="107" cy="78" r="4"/></svg>`,
+  safe:()=>`<svg class="ct ct-safe" viewBox="0 0 200 150" aria-hidden="true"><rect class="k-metald" x="42" y="12" width="116" height="128" rx="10"/><rect class="k-dark" x="52" y="22" width="96" height="108" rx="6"/><rect class="k-brass" x="64" y="98" width="30" height="14" rx="2"/><rect class="k-brass" x="98" y="98" width="30" height="14" rx="2"/><rect class="k-brassd" x="80" y="84" width="30" height="14" rx="2"/><g class="lid"><rect class="k-metal" x="52" y="22" width="96" height="108" rx="6"/><circle class="k-metald" cx="100" cy="76" r="24"/><circle class="k-dark" cx="100" cy="76" r="15"/><circle class="k-brass" cx="100" cy="76" r="5"/><rect class="k-metald" x="130" y="64" width="8" height="24" rx="3"/></g></svg>`,
+  chest:()=>`<svg class="ct ct-chest" viewBox="0 0 200 150" aria-hidden="true"><ellipse class="k-brass" cx="80" cy="74" rx="16" ry="7"/><ellipse class="k-brassd" cx="108" cy="72" rx="16" ry="7"/><ellipse class="k-brass" cx="130" cy="75" rx="14" ry="6"/><rect class="k-wood" x="34" y="74" width="132" height="62" rx="6"/><rect class="k-brass" x="34" y="74" width="132" height="8"/><rect class="k-brassd" x="60" y="74" width="8" height="62"/><rect class="k-brassd" x="132" y="74" width="8" height="62"/><g class="lid"><path class="k-woodd" d="M34 76V58c0-22 30-34 66-34s66 12 66 34v18z"/><rect class="k-brass" x="34" y="68" width="132" height="8"/></g><rect class="k-brass k-hide" x="90" y="70" width="20" height="24" rx="4"/><circle class="k-dark k-hide" cx="100" cy="80" r="3"/></svg>`,
+  door:()=>`<svg class="ct ct-door" viewBox="0 0 200 150" aria-hidden="true"><rect class="k-metald" x="54" y="6" width="92" height="144" rx="4"/><rect class="k-light" x="60" y="12" width="80" height="138"/><g class="lid"><rect class="k-metal" x="60" y="12" width="80" height="138"/><rect class="k-metald" x="70" y="24" width="60" height="34" rx="3"/><text class="k-txt2" x="100" y="46">SALIDA</text><circle class="k-brass" cx="128" cy="88" r="6"/></g></svg>`
+};
+
+/* ---------- pizza ---------- */
+function pizzaSVG(n,on,tap){
+  const cx=110,cy=110,r=100;let g='';
+  for(let i=0;i<n;i++){
+    const a0=-Math.PI/2+i*2*Math.PI/n,a1=a0+2*Math.PI/n,am=(a0+a1)/2;
+    const x0=cx+r*Math.cos(a0),y0=cy+r*Math.sin(a0),x1=cx+r*Math.cos(a1),y1=cy+r*Math.sin(a1);
+    const px=cx+.62*r*Math.cos(am),py=cy+.62*r*Math.sin(am);
+    g+=`<g class="slice${on.has(i)?' on':''}" data-i="${i}"><path d="M${cx},${cy} L${x0.toFixed(1)},${y0.toFixed(1)} A${r},${r} 0 0 1 ${x1.toFixed(1)},${y1.toFixed(1)} Z"/><circle class="pep" cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="${Math.min(12,5+36/n).toFixed(1)}"/></g>`;
+  }
+  return `<svg class="pizza${tap?' tap':''}" viewBox="0 0 220 220" role="img" aria-label="Pizza dividida en ${n} porciones"><circle class="plate" cx="110" cy="110" r="108"/>${g}</svg>`;
+}
+
+/* ---------- generadores de retos ---------- */
+function irr(qmin,qmax){for(;;){const q=R(qmin,qmax),p=R(1,q-1);if(gcd(p,q)===1)return[p,q]}}
+
+function genPizzaColor(){const b=pick([5,6,8]),n=R(1,b-1);
+  return{kind:'pizza-color',slices:b,need:[n,b],prompt:`Pon en la caja ${fr(n,b)} de pizza.`,sub:'Toca las porciones para ponerlas o quitarlas.',
+    hint:`La pizza está dividida en ${b} partes iguales (eso es el denominador). Tienes que poner ${n} porciones (el numerador).`}}
+function genPizzaRead(){const b=pick([5,6,8,10]),k=R(1,b-1);
+  let opts=[[k,b],[b-k,b],[b,k],[k,b+2]];
+  const seen=new Set();opts=opts.filter(o=>{const s=o.join('/');if(seen.has(s))return false;seen.add(s);return true});
+  while(opts.length<4){const o=[R(1,b),R(2,b+3)];const s=o.join('/');if(!seen.has(s)&&o[0]*b!==o[1]*k){seen.add(s);opts.push(o)}}
+  return{kind:'pizza-read',slices:b,k,start:R(0,b-1),opts:shuffle(opts),noCheck:true,prompt:'¿Qué fracción de la pizza queda en la caja?',
+    hint:'Cuenta en cuántas partes iguales está dividida la pizza (va abajo) y cuántas porciones quedan (va arriba).'}}
+function genPizzaEquiv(){const d=pick([2,3,4]),n=R(1,d-1),slices=pick({2:[6,8,10],3:[6,9,12],4:[8,12]}[d]);
+  return{kind:'pizza-color',slices,need:[n,d],prompt:`Esta pizza tiene ${slices} porciones. Pon en la caja ${fr(n,d)} de pizza.`,sub:'Toca las porciones para ponerlas o quitarlas.',
+    hint:`Reparte las ${slices} porciones en ${d} grupos iguales: cada grupo, que es 1/${d}, tiene ${slices/d} porciones. Necesitas ${n} ${n>1?'grupos':'grupo'}.`}}
+
+function genWheelComplete(){const d=R(2,9),n=R(1,d-1),k=R(2,6);
+  if(Math.random()<.5)return{kind:'wheels',mode:'complete',left:[n,d],right:[null,d*k],ans:[n*k,d*k],trap:n+d*k-d,prompt:'Gira las ruedas para que las fracciones sean <b>equivalentes</b>.',
+    hint:`Abajo, el ${d} se ha multiplicado por ${k} y da ${d*k}. Haz lo mismo con el numerador.`};
+  return{kind:'wheels',mode:'complete',left:[n,d],right:[n*k,null],ans:[n*k,d*k],trap:d+n*k-n,prompt:'Gira las ruedas para que las fracciones sean <b>equivalentes</b>.',
+    hint:`Arriba, el ${n} se ha multiplicado por ${k} y da ${n*k}. Haz lo mismo con el denominador.`}}
+function simplifyRound(p,q,k){const a=p*k,b=q*k;
+  return{kind:'wheels',mode:'simplify',left:[a,b],right:[null,null],ans:[p,q],prompt:'Simplifica la fracción hasta que sea <b>irreducible</b>.',
+    hint:`${a} y ${b} se pueden dividir los dos entre ${spf(gcd(a,b))}. Divide, mira el resultado y repite mientras se pueda.`}}
+function genWheelSimplify(){const[p,q]=irr(2,7);return simplifyRound(p,q,R(2,5))}
+function genWheelSimplifyBig(){for(;;){const[p,q]=irr(3,9),k=pick([6,8,9,10,12]);if(q*k<=99)return simplifyRound(p,q,k)}}
+
+function genPotions(mode,count){let items=[];
+  if(mode==='sameDen'){const d=R(6,12);items=shuffle(range(1,d-1)).slice(0,count).map(n=>[n,d])}
+  else if(mode==='sameNum'){const n=R(1,3);items=shuffle(range(n+1,12)).slice(0,count).map(d=>[n,d])}
+  else{const seen=new Set();while(items.length<count){const d=pick([2,3,4,5,6,8,9,10,12]),n=R(1,d-1),[a,b]=simp(n,d);if(seen.has(a+'/'+b))continue;seen.add(a+'/'+b);items.push([n,d])}}
+  const sorted=a=>a.every((f,i)=>i===0||a[i-1][0]*f[1]<f[0]*a[i-1][1]);
+  do shuffle(items);while(sorted(items));
+  const hints={sameDen:'Todas tienen el mismo denominador: es mayor la que tiene el numerador más grande.',
+    sameNum:'Todas tienen el mismo numerador. ¡Ojo! Cuanto MAYOR es el denominador, más pequeños son los trozos y MENOR es la fracción.',
+    mixed:'Pásalas a un denominador común, o divide numerador entre denominador para ver su valor decimal (por ejemplo, 3/4 = 0,75).'};
+  return{kind:'order',items,prompt:'Coloca las pociones de la <b>menor</b> a la <b>mayor</b>.',sub:'Toca una poción para subirla a la estantería. Tócala otra vez para devolverla.',hint:hints[mode]}}
+
+function genSum(){for(;;){const b=R(2,7),d=R(2,7);if(b===d)continue;const a=R(1,b-1),c=R(1,d-1),[n,m]=simp(a*d+c*b,b*d);if(m===1)continue;
+  return{kind:'frac-input',prompt:'Teclea el resultado <b>simplificado</b>.',expr:`${fr(a,b)}<span class="op">+</span>${fr(c,d)}`,ans:[n,m],
+    traps:[[[a+c,b+d],'¡Cuidado! Los denominadores no se suman. Primero busca un denominador común.']],
+    hint:`El m.c.m. de ${b} y ${d} es ${lcm(b,d)}. Pasa las dos fracciones a denominador ${lcm(b,d)} y suma solo los numeradores.`}}}
+function genSub(){for(;;){const b=R(2,8),d=R(2,8);if(b===d)continue;const a=R(1,b-1),c=R(1,d-1);if(a*d<=c*b)continue;const[n,m]=simp(a*d-c*b,b*d);if(m===1)continue;
+  const traps=[];if(b>d&&a>c)traps.push([[a-c,b-d],'¡Cuidado! Los denominadores no se restan. Primero busca un denominador común.']);
+  return{kind:'frac-input',prompt:'Teclea el resultado <b>simplificado</b>.',expr:`${fr(a,b)}<span class="op">−</span>${fr(c,d)}`,ans:[n,m],traps,
+    hint:`El m.c.m. de ${b} y ${d} es ${lcm(b,d)}. Pasa las dos fracciones a denominador ${lcm(b,d)} y resta solo los numeradores.`}}}
+function genMix(){for(;;){const w=R(1,2),d=R(2,6),f=R(2,6);if(d===f)continue;const c=R(1,d-1),e=R(1,f-1),[n,m]=simp(w*d*f-c*f+e*d,d*f);if(m===1)continue;
+  return{kind:'frac-input',prompt:'Teclea el resultado <b>simplificado</b>.',expr:`<b>${w}</b><span class="op">−</span>${fr(c,d)}<span class="op">+</span>${fr(e,f)}`,ans:[n,m],traps:[],
+    hint:`Un número entero es una fracción con denominador 1: ${w} = ${w}/1. Usa como denominador común el m.c.m. de ${d} y ${f}, que es ${lcm(d,f)}.`}}}
+
+function genOfQty(){const d=pick([3,4,5,6,8]),n=R(1,d-1),m=R(3,12),Q=d*m;
+  return{kind:'int-input',prompt:`¿Cuánto es ${fr(n,d)} de <b>${Q}</b> monedas?`,ans:n*m,traps:[[Q*n,'Has multiplicado pero no has dividido entre el denominador.']],
+    hint:`Divide ${Q} entre ${d} (eso es 1/${d} de las monedas) y después multiplica por ${n}.`}}
+function genRemain(){const d=pick([3,4,5,6,8]),n=R(1,d-1),m=R(3,10),Q=d*m;
+  return{kind:'int-input',prompt:`En el cofre hay <b>${Q}</b> monedas. Un pirata se lleva ${fr(n,d)} de ellas. ¿Cuántas monedas <b>quedan</b> en el cofre?`,ans:Q-n*m,
+    traps:[[n*m,'Esas son las monedas que se lleva el pirata. ¿Cuántas QUEDAN?']],
+    hint:`Primero calcula cuántas se lleva: ${n}/${d} de ${Q}. Después réstalo del total. También puedes pensar que quedan ${d-n}/${d}.`}}
+function genInverse(){const d=pick([3,4,5,6,7,8]),n=R(1,d-1),m=R(2,9),V=n*m;
+  return{kind:'int-input',prompt:`Los ${fr(n,d)} de las monedas del cofre son <b>${V}</b> monedas. ¿Cuántas monedas hay <b>en total</b>?`,ans:d*m,
+    traps:n>1?[[m,'Eso es solo 1/'+d+' de las monedas. Te falta un paso.']]:[],
+    hint:`Si ${n} ${n>1?'partes son':'parte es'} ${V} monedas, calcula cuánto vale UNA parte (divide entre ${n}). El total son ${d} partes.`}}
+
+function genMul(){for(;;){const b=R(2,9),d=R(2,9),a=R(1,b-1),c=R(1,d-1),[n,m]=simp(a*c,b*d);if(m===1||gcd(a*c,b*d)===1&&Math.random()<.6)continue;
+  return{kind:'frac-input',prompt:'Teclea el resultado <b>simplificado</b>.',expr:`${fr(a,b)}<span class="op">×</span>${fr(c,d)}`,ans:[n,m],
+    traps:[[[a*d,b*c],'Eso sería dividir. Para multiplicar: numerador por numerador y denominador por denominador.']],
+    hint:'Multiplica numerador por numerador y denominador por denominador. Después simplifica.'}}}
+function genDiv(){for(;;){const b=R(2,9),d=R(2,9),a=R(1,b-1),c=R(1,d-1),[n,m]=simp(a*d,b*c);if(m===1)continue;
+  return{kind:'frac-input',prompt:'Teclea el resultado <b>simplificado</b>.',expr:`${fr(a,b)}<span class="op">÷</span>${fr(c,d)}`,ans:[n,m],
+    traps:[[[a*c,b*d],'Has multiplicado sin dar la vuelta a la segunda fracción.']],
+    hint:'Dividir es multiplicar por la inversa: da la vuelta a la segunda fracción y multiplica. (O multiplica «en cruz».)'}}}
+function genCake(){for(;;){const b=R(2,5),d=R(2,5),a=R(1,b-1),c=R(1,d-1),[n,m]=simp((b-a)*c,b*d);if(m===1)continue;
+  return{kind:'frac-input',prompt:`Te comes ${fr(a,b)} de una tarta. De lo que queda, tu amigo se come ${fr(c,d)}. ¿Qué fracción de la <b>tarta entera</b> se ha comido tu amigo?`,expr:'',ans:[n,m],
+    traps:[[[c,d],'Esa es la parte de lo que QUEDABA, no de la tarta entera.'],[[a*c,b*d],'Has partido de lo que te comiste tú. Primero averigua qué fracción de tarta queda.']],
+    hint:`Primero: ¿qué fracción de tarta queda? Es 1 − ${a}/${b}. Después calcula ${c}/${d} DE esa cantidad (multiplica).`}}}
+
+const ROOMS=[
+  {key:'pizza',name:'Caja de pizzas',title:'La cocina del laboratorio',open:'¡La caja de pizzas se abre!',
+   story:'El Dr. Quebrado dejó una caja de pizza con un cierre muy raro: solo se abre si pones exactamente la cantidad de pizza que pide.',gens:[genPizzaColor,genPizzaRead,genPizzaEquiv]},
+  {key:'lock',name:'Candado de ruedas',title:'El armario del candado',open:'¡Clac! El candado cede.',
+   story:'Un candado de ruedas bloquea el armario. Gira cada rueda con las flechas o deslizando el dedo hasta formar la fracción correcta.',gens:[genWheelComplete,genWheelSimplify,genWheelSimplifyBig]},
+  {key:'potion',name:'Estantería de pociones',title:'La estantería de pociones',open:'¡El armario de pociones se abre!',
+   story:'Las pociones tienen que estar ordenadas de menor a mayor. Si te equivocas, el armario no se abre (y huele fatal).',gens:[()=>genPotions('sameDen',3),()=>genPotions('sameNum',4),()=>genPotions('mixed',4)]},
+  {key:'safe',name:'Caja fuerte',title:'La caja fuerte',open:'¡La caja fuerte se abre!',
+   story:'El código de la caja fuerte es el resultado de cada operación. Ojo: solo acepta fracciones simplificadas.',gens:[genSum,genSub,genMix]},
+  {key:'chest',name:'Cofre de monedas',title:'El cofre del pirata',open:'¡El cofre está abierto!',
+   story:'Un viejo cofre lleno de monedas de oro. La cerradura solo acepta números exactos. ¡Calcula bien!',gens:[genOfQty,genRemain,genInverse]},
+  {key:'door',name:'Puerta final',title:'La puerta de salida',open:'',
+   story:'La última puerta. Supera sus 3 retos y después usa tus 5 tarjetas-llave para abrirla.',gens:[genMul,genDiv,genCake]}
+];
+
+function genLoot(){const digits=shuffle(range(1,9)).slice(0,5),seen=new Set(),tags=[];
+  while(tags.length<5){const d=pick([3,4,5,6,8,10,12]),[a,b]=simp(R(1,d-1),d);if(seen.has(a+'/'+b))continue;seen.add(a+'/'+b);tags.push([a,b])}
+  return digits.map((g,i)=>({g,f:tags[i]}))}
+const cardInner=l=>`<span class="cg">${l.g}</span><span class="cf">${fr(l.f[0],l.f[1])}</span>`;
+
+/* ---------- widgets ---------- */
+function checkFrac(x,y,c){
+  if(y===0)return{invalid:true,msg:'El denominador no puede ser 0.'};
+  const[n,d]=c.ans;
+  if(x*d===y*n)return gcd(x,y)===1?true:{near:true,msg:`¡El valor es correcto! Pero tienes que simplificar ${fr(x,y)} hasta que sea irreducible.`};
+  for(const[t,msg]of c.traps||[])if(x*t[1]===y*t[0])return{msg};
+  return{msg:'No es correcto. Revisa los cálculos o pide una pista.'};
+}
+function keypadHTML(sw){return `<div class="keypad">${range(1,9).map(k=>`<button class="key" data-k="${k}">${k}</button>`).join('')}${sw?'<button class="key alt" data-k="sw" aria-label="Cambiar entre numerador y denominador">⇅</button>':'<span></span>'}<button class="key" data-k="0">0</button><button class="key alt" data-k="del" aria-label="Borrar">⌫</button></div>`}
+function bindKeys(el,fn){$$('.key',el).forEach(b=>b.onclick=()=>fn(b.dataset.k))}
+
+function drum(parent){
+  let v=0;const d=document.createElement('div');d.className='drum';
+  d.innerHTML='<button class="dbtn" aria-label="Subir">▲</button><div class="win"><span class="p"></span><span class="c"></span><span class="n"></span></div><button class="dbtn" aria-label="Bajar">▼</button>';
+  const win=$('.win',d);
+  const set=(nv,quiet)=>{v=(nv%10+10)%10;$('.p',d).textContent=(v+9)%10;$('.c',d).textContent=v;$('.n',d).textContent=(v+1)%10;
+    if(!quiet){sfx.click();win.classList.remove('roll');void win.offsetWidth;win.classList.add('roll')}};
+  const [up,dn]=$$('.dbtn',d);
+  up.onclick=()=>{if(!cur.locked)set(v+1)};dn.onclick=()=>{if(!cur.locked)set(v-1)};
+  let y0=null;
+  win.addEventListener('pointerdown',e=>{y0=e.clientY;win.setPointerCapture(e.pointerId)});
+  win.addEventListener('pointermove',e=>{if(y0==null||cur.locked)return;const st=Math.trunc((e.clientY-y0)/26);if(st){set(v-st);y0+=st*26}});
+  const end=()=>{y0=null};win.addEventListener('pointerup',end);win.addEventListener('pointercancel',end);
+  set(0,true);parent.appendChild(d);return{get:()=>v};
+}
+function numberWheels(parent){const t=drum(parent),u=drum(parent);return{get:()=>t.get()*10+u.get()}}
+
+const WIDGETS={
+  'pizza-color'(el,c){
+    const on=new Set();
+    el.innerHTML=`${pizzaSVG(c.slices,on,true)}<p class="count">Porciones en la caja: <b id="cnt">0</b> de ${c.slices}</p>`;
+    $$('.slice',el).forEach(g=>g.addEventListener('click',()=>{if(c.locked)return;const i=+g.dataset.i;on.has(i)?on.delete(i):on.add(i);g.classList.toggle('on');sfx.tap();$('#cnt',el).textContent=on.size}));
+    c.check=()=>{if(!on.size)return{invalid:true,msg:'Toca alguna porción primero.'};const a=on.size*c.need[1],b=c.need[0]*c.slices;
+      return a===b?true:{msg:a>b?'Te has pasado: hay más pizza de la que pide.':'Falta pizza en la caja.'}};
+  },
+  'pizza-read'(el,c){
+    const on=new Set(range(0,c.k-1).map(i=>(i+c.start)%c.slices));
+    el.innerHTML=`${pizzaSVG(c.slices,on,false)}<div class="opts">${c.opts.map((o,i)=>`<button class="opt" data-i="${i}">${fr(o[0],o[1])}</button>`).join('')}</div>`;
+    $$('.opt',el).forEach(b=>b.onclick=()=>{if(c.locked)return;const[n,d]=c.opts[+b.dataset.i];
+      if(n*c.slices===d*c.k)return correct();
+      if(n===c.slices-c.k&&d===c.slices)return wrong('Esas son las porciones que FALTAN. ¿Cuántas quedan?');
+      if(n===c.slices&&d===c.k)return wrong('Está al revés: abajo va el número total de partes.');
+      wrong('No es esa. Cuenta otra vez las porciones.')});
+  },
+  wheels(el,c){
+    el.innerHTML=`<div class="lockface"><div>${fr(c.left[0],c.left[1],'big')}</div><div class="eq">=</div><div class="eq-right"><div class="row" id="wn"></div><div class="bar"></div><div class="row" id="wd"></div></div></div>`;
+    const wn=c.right[0]==null?numberWheels($('#wn',el)):null,wd=c.right[1]==null?numberWheels($('#wd',el)):null;
+    if(!wn)$('#wn',el).innerHTML=`<span class="fixed">${c.right[0]}</span>`;
+    if(!wd)$('#wd',el).innerHTML=`<span class="fixed">${c.right[1]}</span>`;
+    c.check=()=>{const x=wn?wn.get():c.right[0],y=wd?wd.get():c.right[1];
+      if(y===0)return{invalid:true,msg:'El denominador no puede ser 0.'};
+      if(x===0)return{invalid:true,msg:'Gira las ruedas para formar la fracción.'};
+      if(c.mode==='complete'){if(x===c.ans[0]&&y===c.ans[1])return true;
+        if((wn?x:y)===c.trap)return{msg:'No se suma: hay que MULTIPLICAR arriba y abajo por el mismo número.'};
+        return{msg:'No son equivalentes. ¿Por qué número se ha multiplicado?'}}
+      if(x*c.left[1]===y*c.left[0])return gcd(x,y)===1?true:{near:true,msg:`¡Vas bien! ${fr(x,y)} es equivalente, pero todavía se puede simplificar.`};
+      return{msg:'Esa fracción no es equivalente. Divide numerador y denominador entre el MISMO número.'}};
+  },
+  order(el,c){
+    const n=c.items.length,placed=[];
+    const bottle=`<svg viewBox="0 0 60 90" aria-hidden="true"><rect class="cork" x="23" y="1" width="14" height="9" rx="2"/><path class="glass" d="M25 10h10v16c10 4 17 13 17 26 0 18-11 34-22 34S8 70 8 52c0-13 7-22 17-26z"/><path class="liq" d="M11 54c6 3 13-3 19 0s13 3 19 0c0 14-9 28-19 28S11 68 11 54z"/><ellipse class="shine" cx="19" cy="46" rx="3" ry="7"/></svg>`;
+    const pot=(i,gone,j)=>`<button class="potion${gone?' gone':''}" data-i="${i}"${j!=null?` data-j="${j}"`:''} style="--liq:var(--p${i%5+1})"${gone?' tabindex="-1" aria-hidden="true"':''}>${bottle}<span class="plabel">${fr(c.items[i][0],c.items[i][1])}</span></button>`;
+    el.innerHTML='<div class="cabinet"></div><div class="shelfwrap"><span class="end">menor</span><div class="shelf"></div><span class="end">mayor</span></div>';
+    const cab=$('.cabinet',el),sh=$('.shelf',el);
+    const draw=()=>{
+      cab.innerHTML=c.items.map((f,i)=>pot(i,placed.includes(i))).join('');
+      sh.innerHTML=range(0,n-1).map(j=>(j?'<span class="lt">&lt;</span>':'')+`<div class="slot">${placed[j]==null?'':pot(placed[j],false,j)}</div>`).join('');
+      $$('.potion:not(.gone)',cab).forEach(b=>b.onclick=()=>{if(c.locked)return;placed.push(+b.dataset.i);sfx.tap();draw()});
+      $$('.potion',sh).forEach(b=>b.onclick=()=>{if(c.locked)return;placed.splice(+b.dataset.j,1);sfx.tap();draw()});
+    };draw();
+    c.check=()=>{if(placed.length<n)return{invalid:true,msg:'Coloca todas las pociones en la estantería.'};
+      for(let j=0;j<n-1;j++){const A=c.items[placed[j]],B=c.items[placed[j+1]];if(A[0]*B[1]>B[0]*A[1])return{msg:`El orden no es correcto: ${fr(A[0],A[1])} es mayor que ${fr(B[0],B[1])}.`}}
+      return true};
+  },
+  'frac-input'(el,c){
+    const f=['',''];let foc=0;
+    el.innerHTML=`<div class="exprrow">${c.expr?`<div class="expr">${c.expr}</div><span class="op">=</span>`:''}<div class="lcd"><button class="fld" data-f="0" aria-label="Numerador"></button><span class="lcdbar"></span><button class="fld" data-f="1" aria-label="Denominador"></button></div></div>${keypadHTML(true)}`;
+    const flds=$$('.fld',el);
+    const draw=()=>flds.forEach((b,i)=>{b.textContent=f[i]||' ';b.classList.toggle('focus',i===foc)});
+    flds.forEach(b=>b.onclick=()=>{foc=+b.dataset.f;sfx.click();draw()});
+    bindKeys(el,k=>{if(c.locked)return;if(k==='del')f[foc]=f[foc].slice(0,-1);else if(k==='sw')foc=1-foc;else if(f[foc].length<3)f[foc]=(f[foc]+k).replace(/^0+(?=\d)/,'');sfx.click();draw()});
+    draw();
+    c.check=()=>{if(!f[0]||!f[1])return{invalid:true,msg:'Escribe el numerador y el denominador (toca ⇅ para cambiar).'};return checkFrac(+f[0],+f[1],c)};
+  },
+  'int-input'(el,c){
+    let v='';
+    el.innerHTML=`<div class="lcd single"><button class="fld focus" aria-label="Respuesta"></button></div>${keypadHTML(false)}`;
+    const fld=$('.fld',el),draw=()=>{fld.textContent=v||' '};
+    bindKeys(el,k=>{if(c.locked)return;if(k==='del')v=v.slice(0,-1);else if(v.length<4)v=(v+k).replace(/^0+(?=\d)/,'');sfx.click();draw()});
+    draw();
+    c.check=()=>{if(!v)return{invalid:true,msg:'Escribe un número.'};const x=+v;if(x===c.ans)return true;
+      for(const[t,msg]of c.traps||[])if(x===t)return{msg};return{msg:'No es correcto. Revisa los cálculos o pide una pista.'}};
+  }
+};
+
+/* ---------- HUD ---------- */
+function updateHud(){
+  $('#hud').hidden=false;$('#tray').hidden=false;
+  const allDone=S.room===5&&S.round>=3;
+  $('#strip').innerHTML=ROOMS.map((r,i)=>`<span class="st ${i<S.room||(i===5&&allDone)?'done':i===S.room?'cur':''}" title="${r.name}">${i+1}</span>`).join('');
+  const got=Math.min(S.room,5);
+  $('#slots').innerHTML=S.loot.map((l,i)=>i<got?`<div class="mini got">${cardInner(l)}</div>`:`<div class="mini">?</div>`).join('');
+  $('#btnSound').textContent='Sonido: '+(soundOn?'sí':'no');
+}
+$('#btnSound').onclick=()=>{soundOn=!soundOn;STORE.set(SND,soundOn);$('#btnSound').textContent='Sonido: '+(soundOn?'sí':'no');sfx.tap()};
+$('#btnHome').onclick=()=>{save();renderStart()};
+
+function fb(msg,cls){const e=$('#fb');if(!e)return;e.className='fb '+(cls||'');e.innerHTML=msg}
+function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('show');$('#timer').classList.add('pen');
+  clearTimeout(toast.t);toast.t=setTimeout(()=>{e.classList.remove('show');$('#timer').classList.remove('pen')},1100)}
+function shakeChal(){const c=$('#chal');if(!c)return;c.classList.remove('shake');void c.offsetWidth;c.classList.add('shake')}
+
+/* ---------- flujo de una sala ---------- */
+function renderRoom(){
+  const room=ROOMS[S.room];
+  scr.innerHTML=`<section class="room wrap">
+    <aside class="scene">
+      <div class="scene-top"><div class="ctbox">${CT[room.key]()}</div><div><p class="eyebrow">Sala ${S.room+1} de 6</p><h2>${room.title}</h2></div></div>
+      <p class="story">${room.story}</p>
+      <div class="progress"><div class="bulbs" id="bulbs">${[0,1,2].map(i=>`<span class="bulb${i<S.round?' on':''}"></span>`).join('')}</div><span>Reto <span id="rnum">${S.round+1}</span> de 3</span></div>
+    </aside>
+    <div class="chal" id="chal"></div>
+  </section>`;
+  updateHud();startRound();window.scrollTo(0,0);
+}
+function challengeShell(c){
+  return `<div class="prompt">${c.prompt}</div>${c.sub?`<p class="sub">${c.sub}</p>`:''}<div class="widget" id="widget"></div>
+    <p class="fb" id="fb" aria-live="polite"></p><div class="hintbox" id="hintbox" hidden></div>
+    <div class="actions"><button class="btn ghost" id="btnHint">Pista <small>+30 s</small></button>${c.noCheck?'':`<button class="btn" id="btnCheck">${c.checkLabel||'Comprobar'}</button>`}</div>`;
+}
+function startRound(){
+  cur=ROOMS[S.room].gens[S.round]();cur.locked=false;cur.hintShown=false;
+  const chal=$('#chal');chal.innerHTML=challengeShell(cur);
+  WIDGETS[cur.kind]($('#widget'),cur);
+  bindActions();
+  $('#rnum').textContent=S.round+1;
+}
+function bindActions(){$('#btnHint').onclick=showHint;const b=$('#btnCheck');if(b)b.onclick=check}
+function showHint(){
+  if(!cur.hintShown){cur.hintShown=true;S.hints++;S.penalty+=30;toast('+30 s');save()}
+  const h=$('#hintbox');h.hidden=false;h.innerHTML=cur.hint;$('#btnHint').disabled=true;sfx.tap();
+}
+function check(){
+  if(cur.locked)return;const r=cur.check();
+  if(r===true)return correct();
+  if(r.invalid){fb(r.msg,'warn');return}
+  if(r.near){fb(r.msg,'warn');sfx.bad();shakeChal();return}
+  wrong(r.msg);
+}
+function wrong(msg){S.errors++;S.penalty+=10;toast('+10 s');sfx.bad();shakeChal();fb(msg,'bad');save()}
+function correct(){
+  cur.locked=true;sfx.ok();fb(pick(['¡Correcto!','¡Genial!','¡Eso es!','¡Perfecto!']),'ok');
+  if(cur.final){setTimeout(victory,700);return}
+  const bulbs=$$('#bulbs .bulb');if(bulbs[S.round])bulbs[S.round].classList.add('on');
+  setTimeout(()=>{S.round++;
+    if(S.round<3){save();startRound()}else roomDone()},1000);
+}
+function roomDone(){
+  if(S.room===5){save();return renderFinal()}
+  const room=ROOMS[S.room],loot=S.loot[S.room];
+  S.room++;S.round=0;save();updateHud();
+  overlay(`<div class="dialog"><p class="eyebrow">Sala ${S.room} superada</p><h2>${room.open}</h2>
+    <div class="ctbig" id="ctbig"><div class="glow"></div>${CT[room.key]()}</div>
+    <div class="card loot">${cardInner(loot)}</div>
+    <p>Has conseguido una tarjeta-llave. Fíjate en su fracción: la necesitarás en la puerta final.</p>
+    <button class="btn big" id="btnNext">${S.room===5?'Ir a la puerta final':'Siguiente sala'}</button></div>`);
+  const box=$('#ctbig'),ct=$('.ct',box);
+  setTimeout(()=>ct.classList.add('shake'),150);
+  setTimeout(()=>{ct.classList.remove('shake');ct.classList.add('open');box.classList.add('opened');sfx.unlock()},800);
+  $('#btnNext').onclick=()=>{closeOverlay();renderRoom();const m=$$('#slots .mini')[S.room-1];if(m)m.classList.add('new')};
+}
+
+/* ---------- puerta final: tarjetas ---------- */
+function renderFinal(){
+  updateHud();
+  scr.innerHTML=`<section class="room wrap">
+    <aside class="scene">
+      <div class="scene-top"><div class="ctbox">${CT.door()}</div><div><p class="eyebrow">Último paso</p><h2>El panel de la salida</h2></div></div>
+      <p class="story">La puerta tiene un panel con 5 ranuras. Solo se abre si metes tus tarjetas-llave en el orden correcto.</p>
+      <div class="progress"><div class="bulbs">${'<span class="bulb on"></span>'.repeat(3)}</div><span>Retos superados</span></div>
+    </aside>
+    <div class="chal" id="chal"></div></section>`;
+  cur={final:true,locked:false,hintShown:false,checkLabel:'Abrir la puerta',
+    prompt:'Mete las tarjetas de la fracción <b>menor</b> a la <b>mayor</b>.',sub:'Toca una tarjeta para meterla en el panel. Tócala otra vez para sacarla.',
+    hint:'Pasa todas las fracciones a número decimal (divide numerador entre denominador) o a un denominador común. Por ejemplo, 3/4 = 0,75 y 2/3 ≈ 0,67.'};
+  $('#chal').innerHTML=challengeShell(cur);
+  const w=$('#widget'),placed=[];
+  w.innerHTML='<div class="deck"></div><div class="panel5"></div>';
+  const deck=$('.deck',w),panel=$('.panel5',w);
+  const draw=()=>{
+    deck.innerHTML=S.loot.map((l,i)=>`<button class="card${placed.includes(i)?' gone':''}" data-i="${i}">${cardInner(l)}</button>`).join('');
+    panel.innerHTML=range(0,4).map(j=>placed[j]==null?`<div class="pslot">${j+1}</div>`:`<button class="card" data-j="${j}">${cardInner(S.loot[placed[j]])}</button>`).join('');
+    $$('.card:not(.gone)[data-i]',deck).forEach(b=>b.onclick=()=>{if(cur.locked)return;placed.push(+b.dataset.i);sfx.tap();draw()});
+    $$('.card[data-j]',panel).forEach(b=>b.onclick=()=>{if(cur.locked)return;placed.splice(+b.dataset.j,1);sfx.tap();draw()});
+  };draw();
+  cur.check=()=>{if(placed.length<5)return{invalid:true,msg:'Mete las 5 tarjetas en el panel.'};
+    for(let j=0;j<4;j++){const A=S.loot[placed[j]].f,B=S.loot[placed[j+1]].f;if(A[0]*B[1]>B[0]*A[1])return{msg:`La puerta no se abre: ${fr(A[0],A[1])} es mayor que ${fr(B[0],B[1])}.`}}
+    return true};
+  bindActions();window.scrollTo(0,0);
+}
+
+/* ---------- victoria ---------- */
+function victory(){
+  const t=elapsed(),p=played();stopTimer();S.finished=true;STORE.del(SAVE);
+  const date=new Date().toLocaleDateString('es-ES');
+  const rank=STORE.get(RANK)||[],entry={name:S.name,t,d:date,id:Date.now()};
+  rank.push(entry);rank.sort((a,b)=>a.t-b.t);STORE.set(RANK,rank.slice(0,10));
+  const pos=rank.findIndex(r=>r.id===entry.id)+1;
+  $('#strip').innerHTML=ROOMS.map((r,i)=>`<span class="st done">${i+1}</span>`).join('');
+  overlay(`<div class="dialog"><div class="ctbig" id="ctbig"><div class="glow"></div>${CT.door()}</div>
+    <h2 class="wintitle">¡Libre!</h2><p>Has escapado del laboratorio del Dr. Quebrado.</p>
+    <div class="cert"><span class="cl">Certificado de escapada</span><span class="cname">${esc(S.name)}</span><span class="ctime">${fmt(t)}</span>
+      <dl><dt>Tiempo jugando</dt><dd>${fmt(p)}</dd><dt>Errores (${S.errors} × 10 s)</dt><dd>+${fmt(S.errors*10000)}</dd><dt>Pistas (${S.hints} × 30 s)</dt><dd>+${fmt(S.hints*30000)}</dd><dt>Puesto en este iPad</dt><dd>${pos}.º</dd></dl>
+      <span class="small">${date} · Enséñaselo a tu profe</span></div>
+    <button class="btn big" id="btnEnd">Volver al inicio</button></div>`);
+  const box=$('#ctbig'),ct=$('.ct',box);
+  setTimeout(()=>{ct.classList.add('open');box.classList.add('opened');sfx.win();confetti()},400);
+  $('#btnEnd').onclick=()=>{closeOverlay();S=null;renderStart()};
+}
+function confetti(){
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+  const cv=$('#confetti');cv.hidden=false;const ctx=cv.getContext('2d');const dpr=window.devicePixelRatio||1;
+  cv.width=innerWidth*dpr;cv.height=innerHeight*dpr;ctx.scale(dpr,dpr);
+  const cs=getComputedStyle(document.documentElement),cols=['--brass','--p1','--p2','--p3','--p5','--fg'].map(v=>cs.getPropertyValue(v).trim());
+  const ps=Array.from({length:160},()=>({x:innerWidth/2+(Math.random()-.5)*120,y:innerHeight*.35,vx:(Math.random()-.5)*14,vy:-Math.random()*14-4,r:Math.random()*6+4,c:pick(cols),a:Math.random()*6,va:(Math.random()-.5)*.4}));
+  const t0=performance.now();
+  (function f(t){ctx.clearRect(0,0,innerWidth,innerHeight);
+    ps.forEach(p=>{p.vy+=.35;p.vx*=.99;p.x+=p.vx;p.y+=p.vy;p.a+=p.va;ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.a);ctx.fillStyle=p.c;ctx.fillRect(-p.r/2,-p.r/4,p.r,p.r/2);ctx.restore()});
+    if(t-t0<3500)requestAnimationFrame(f);else{ctx.clearRect(0,0,innerWidth,innerHeight);cv.hidden=true}})(t0);
+}
+
+/* ---------- overlay ---------- */
+function overlay(html){const o=$('#overlay');o.innerHTML=html;o.hidden=false;o.scrollTop=0;const b=$('button',o);if(b)setTimeout(()=>b.focus({preventScroll:true}),50)}
+function closeOverlay(){const o=$('#overlay');o.hidden=true;o.innerHTML=''}
+
+/* ---------- inicio ---------- */
+function renderStart(){
+  stopTimer();closeOverlay();$('#hud').hidden=true;$('#tray').hidden=true;
+  const saved=STORE.get(SAVE),rank=(STORE.get(RANK)||[]).slice(0,5);
+  scr.innerHTML=`<section class="start wrap">
+    <div class="hero">
+      <p class="eyebrow">Escape room de fracciones</p>
+      <h1>El laboratorio <span>del Dr. Quebrado</span></h1>
+      <p class="lead">Te has colado en el laboratorio del científico más obsesionado con las fracciones del mundo. Al entrar, ¡clonc!, la puerta se cierra detrás de ti. Abre las cajas, consigue las 5 tarjetas-llave y escapa en el menor tiempo posible.</p>
+      <ul class="rules">
+        <li><span class="tag">6</span>salas, cada una con 3 retos y una caja que abrir</li>
+        <li><span class="tag">+10 s</span>por cada respuesta equivocada</li>
+        <li><span class="tag">+30 s</span>por cada pista que pidas</li>
+      </ul>
+    </div>
+    <div class="start-panel">
+      ${saved?`<div class="resume"><p>Partida a medias de <b>${esc(saved.name)}</b>: sala ${Math.min(saved.room+1,6)} de 6, ${fmt(saved.base+saved.penalty*1000)}.</p><button class="btn" id="btnResume">Continuar partida</button></div>`:''}
+      <label for="nombre">Tu nombre</label>
+      <input id="nombre" maxlength="20" autocomplete="off" autocapitalize="words" placeholder="Escribe tu nombre">
+      <button class="btn big" id="btnStart">${saved?'Empezar partida nueva':'Entrar al laboratorio'}</button>
+      <p class="err" id="startErr" aria-live="polite"></p>
+      <h3 class="eyebrow">Récords en este iPad</h3>
+      ${rank.length?`<ol class="rank">${rank.map(r=>`<li><span class="rn">${esc(r.name)}</span><span class="rt">${fmt(r.t)}</span></li>`).join('')}</ol>`:'<p class="small">Todavía nadie ha escapado. ¿Serás el primero?</p>'}
+    </div></section>`;
+  let confirmNew=false;
+  $('#btnStart').onclick=()=>{
+    const name=$('#nombre').value.trim();
+    if(!name){$('#startErr').textContent='Escribe tu nombre para empezar.';$('#nombre').focus();return}
+    if(saved&&!confirmNew){confirmNew=true;$('#startErr').textContent='Se borrará la partida a medias. Pulsa otra vez para confirmar.';return}
+    newGame(name);
+  };
+  if(saved)$('#btnResume').onclick=()=>{S=saved;S.t0=Date.now();sfx.tap();wakeLock();startTimer();
+    if(S.room===5&&S.round>=3)renderFinal();else renderRoom()};
+}
+function newGame(name){
+  S={name,room:0,round:0,base:0,t0:null,penalty:0,errors:0,hints:0,loot:genLoot(),finished:false};
+  STORE.set(SAVE,S);sfx.tap();wakeLock();
+  overlay(`<div class="dialog"><div class="ctbig">${CT.door()}</div><p class="eyebrow">¡Clonc!</p><h2>La puerta se ha cerrado</h2>
+    <p>${esc(name)}, para salir necesitas 5 tarjetas-llave escondidas en cajas cerradas. Cada caja se abre superando 3 retos de fracciones. En la última puerta tendrás que usar todas las tarjetas.</p>
+    <p>El cronómetro empieza cuando pulses el botón.</p><button class="btn big" id="btnGo">¡A por ello!</button></div>`);
+  $('#btnGo').onclick=()=>{closeOverlay();S.t0=Date.now();startTimer();renderRoom()};
+}
+renderStart();
+</script>
+
+</body>
+</html>
